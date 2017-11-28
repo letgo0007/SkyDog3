@@ -3,6 +3,7 @@
 *.lo
 *.o
 *.obj
+*.d
 
 # Precompiled Headers
 *.gch
@@ -27,3 +28,9 @@
 *.exe
 *.out
 *.app
+
+# Mac Folder system file
+*.DS_Store
+
+# Debug Folder
+Debug/
