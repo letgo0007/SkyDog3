@@ -9,9 +9,21 @@
 #define SRC_HAL_HAL_H_
 
 #include "driverlib.h"
+#include "hal_clock.h"
+#include "hal_gpio.h"
+#include "hal_i2c_slave.h"
+#include "hal_spi_master.h"
+#include "hal_spi_slave.h"
+#include "hal_uart.h"
 
-uint16_t Hal_Mcu_getBoardId(void);
-uint16_t Hal_Mcu_init(void);
+#define HAL_UART_BAUDRATE   115200
+#define HAL_SPI_M_FREQ      1000000
+#define HAL_I2C_S_ADD_CMD   0x10
+#define HAL_I2C_S_ADD_REG   0x12
+
+uint16_t Mcu_getBoardId(void);
+uint16_t Mcu_init(void);
+uint16_t Mcu_reset(void);
 
 
 #endif /* SRC_HAL_HAL_H_ */

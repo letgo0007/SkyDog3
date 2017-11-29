@@ -47,8 +47,8 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
      * **UCA1 = UART**
      * P3.0 UART_RTS        NC
      * P3.1 UART_CTS        NC
-     * P3.4 UART_TX         UCA1TXD     2
-     * P3.5 UART_RX         UCA1RXD     2
+     * P3.4 UART_TX         UCA1TXD     1
+     * P3.5 UART_RX         UCA1RXD     1
      *
      * **UCB0 = SPI Master**
      * P1.4 SPI_M_CLK       UCB0CLK     1
@@ -76,7 +76,9 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
 
     //LEDs
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_setAsOutputPin(GPIO_PORT_P9, GPIO_PIN7);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P9, GPIO_PIN7);
 
     //SPI Slave
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
@@ -85,8 +87,8 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P2, GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
 
     //UART
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN4, GPIO_SECONDARY_MODULE_FUNCTION);
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN5, GPIO_SECONDARY_MODULE_FUNCTION);
+    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P3, GPIO_PIN4, GPIO_PRIMARY_MODULE_FUNCTION);
+    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN5, GPIO_PRIMARY_MODULE_FUNCTION);
 
     //SPI Master
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1, GPIO_PIN4, GPIO_PRIMARY_MODULE_FUNCTION);

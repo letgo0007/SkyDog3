@@ -11,31 +11,41 @@
 #include "stdio.h"
 #include "stdarg.h"
 
-#define HAL_UART_RXBUF_SIZE     256
-#define HAL_UART_TXBUF_SIZE     256
 #define HAL_UART_LOOPBACK       1
-#define HAL_UART_END_CHR        '\n'
 
-static uint8_t u8Hal_UartRxBuf[HAL_UART_RXBUF_SIZE];
-static uint16_t u16Hal_UartRxCount = 0;
-static uint16_t u16Hal_UartRxLineFlag = 0;
+static uint8_t *Uart_RxPtr = 0;
+static uint16_t Uart_RxLen = 0;
+static uint16_t Uart_RxCnt = 0;
 
-uint16_t Hal_Uart_init(void)
+uint16_t Uart_init(uint32_t baudrate)
 {
     // Configure UART
     EUSCI_A_UART_initParam param =
     { 0 };
     param.selectClockSource = EUSCI_A_UART_CLOCKSOURCE_SMCLK;
-    //SMCLK = 16MHz, Baudrate = 115200 , refer to slau367.pdf P766
-    param.clockPrescalar = 8;
-    param.firstModReg = 10;
-    param.secondModReg = 0xF7;
+    switch (baudrate)
+    {
+    case 115200:
+        //SMCLK = 16MHz, Baudrate = 115200 , refer to slau367.pdf P766
+        param.clockPrescalar = 8;
+        param.firstModReg = 10;
+        param.secondModReg = 0xF7;
+        break;
+    case 9600:
+        //SMCLK = 16MHz, Baudrate = 115200 , refer to slau367.pdf P766
+        param.clockPrescalar = 104;
+        param.firstModReg = 2;
+        param.secondModReg = 0xD6;
+        break;
+    default:
+        return STATUS_FAIL;
+    }
 
     param.parity = EUSCI_A_UART_NO_PARITY;
     param.msborLsbFirst = EUSCI_A_UART_LSB_FIRST;
     param.numberofStopBits = EUSCI_A_UART_ONE_STOP_BIT;
     param.uartMode = EUSCI_A_UART_MODE;
-    param.overSampling = EUSCI_A_UART_LOW_FREQUENCY_BAUDRATE_GENERATION;
+    param.overSampling = EUSCI_A_UART_OVERSAMPLING_BAUDRATE_GENERATION;
 
     if (STATUS_FAIL == EUSCI_A_UART_init(EUSCI_A1_BASE, &param))
     {
@@ -45,90 +55,11 @@ uint16_t Hal_Uart_init(void)
     EUSCI_A_UART_enable(EUSCI_A1_BASE);
 
     //Clear & Enable USCI_A1 RX interrupt
-    EUSCI_A_UART_clearInterrupt(EUSCI_A1_BASE,EUSCI_A_UART_RECEIVE_INTERRUPT);
-    EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE,EUSCI_A_UART_RECEIVE_INTERRUPT);
+    EUSCI_A_UART_clearInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+    EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
 
     return STATUS_SUCCESS;
 }
-
-/*! Put 1 char to UART TX. */
-void Hal_Uart_putc(char byte)
-{
-    EUSCI_A_UART_transmitData(EUSCI_A1_BASE,byte);
-}
-
-/*! Put string (end with 0x00) to UART TX. */
-unsigned char Hal_Uart_puts(char *string)
-{
-    unsigned char i, len;
-    len = strlen(string);
-    for (i = 0; i < len; i++)
-    {
-        Hal_Uart_putc(string[i]);
-    }
-    return len;
-}
-
-/*! Return last received data */
-unsigned char Hal_Uart_getc(void)
-{
-    return EUSCI_A_UART_receiveData(EUSCI_A1_BASE);
-}
-
-/*! Copy all buffered data out. */
-unsigned int Hal_Uart_gets(unsigned char *s)
-{
-    if (u16Hal_UartRxCount)
-    {
-        memcpy(s, u8Hal_UartRxBuf, u16Hal_UartRxCount);
-    }
-    return u16Hal_UartRxCount;
-}
-
-/*! Copy 1 line data out (before 'end character'). */
-unsigned int Hal_Uart_getl(unsigned char *s)
-{
-    if(u16Hal_UartRxLineFlag)
-    {
-        memcpy(s, u8Hal_UartRxBuf, u16Hal_UartRxLineFlag);
-    }
-
-    return u16Hal_UartRxLineFlag;
-}
-
-/*! Clear UART RX buffer.  */
-void Hal_Uart_clear(void)
-{
-    memset(u8Hal_UartRxBuf, 0x00, u16Hal_UartRxCount);
-    u16Hal_UartRxCount = 0;
-    u16Hal_UartRxLineFlag = 0;
-}
-
-/*! Print using UART. The same as printf.
- *  Use this when UART_PRINTF_OVERRIDE = 0 when you don't want to override original printf
- */
-void Hal_Uart_print(char *fmt, ...)
-{
-    va_list ap;
-    char string[HAL_UART_TXBUF_SIZE];
-    va_start(ap, fmt);
-    vsprintf(string, fmt, ap);
-    Hal_Uart_puts(string);
-    va_end(ap);
-}
-
-#if HAL_UART_PRINTF_OVERRIDE
-int fputc(int _c, register FILE *_fp)
-{
-    Hal_Uart_putc(_c);
-    return (unsigned char) _c;
-}
-
-int fputs(const char *_ptr, register FILE *_fp)
-{
-    return Hal_Uart_puts((char*) _ptr);
-}
-#endif
 
 //******************************************************************************
 //
@@ -149,22 +80,22 @@ void USCI_A1_ISR(void)
         break;
     case USCI_UART_UCRXIFG:
     {
-        uint8_t rxdata;
-        rxdata = UCA1RXBUF;
 #if HAL_UART_LOOPBACK
         //Loop back function.
         UCA1TXBUF = UCA1RXBUF;
 #endif
-        //Buffer reveived data
-        u8Hal_UartRxBuf[u16Hal_UartRxCount] = UCA1RXBUF;
-        u16Hal_UartRxCount ++;
-
-        //Set line end flag.
-        if(rxdata == HAL_UART_END_CHR)
+        if (Uart_RxLen == 0)
         {
-            u16Hal_UartRxLineFlag = u16Hal_UartRxCount;
+            _NOP(); //No operation
+            //EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);    //Disable RX Interrupt when finish.
         }
-
+        else
+        {
+            //Buffer recieved data.
+            Uart_RxPtr[Uart_RxCnt] = UCA1RXBUF;
+            Uart_RxLen--;
+            Uart_RxCnt++;
+        }
         break;
     }
     case USCI_UART_UCTXIFG:
@@ -175,3 +106,61 @@ void USCI_A1_ISR(void)
         break;
     }
 }
+
+void Uart_putc(uint8_t c)
+{
+    EUSCI_A_UART_transmitData(EUSCI_A1_BASE, c);
+}
+
+uint16_t Uart_puts(uint8_t *s, uint16_t len)
+{
+    uint16_t i;
+    for (i = len; i > 0; i--)
+    {
+        Uart_putc(*s++);
+    }
+    return len;
+}
+
+uint8_t Uart_getc(void)
+{
+    return EUSCI_A_UART_receiveData(EUSCI_A1_BASE);
+}
+
+uint16_t Uart_gets(uint8_t *s, uint16_t len)
+{
+    //Set receive buffer pointer
+    Uart_RxPtr = s;
+    Uart_RxLen = len;
+    Uart_RxCnt = 0;
+
+    //Clear & Enable USCI_B0 RX interrupt
+    EUSCI_A_UART_clearInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+    EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+
+    return STATUS_SUCCESS;
+}
+
+void Uart_print(char *fmt, ...)
+{
+    va_list ap;
+    char string[256];
+    va_start(ap, fmt);
+    vsprintf(string, fmt, ap);
+    Uart_puts(string, strlen(string));
+    va_end(ap);
+}
+
+#if HAL_UART_PRINTF_OVERRIDE
+int fputc(int _c, register FILE *_fp)
+{
+    Uart_putc(_c);
+    return (unsigned char) _c;
+}
+
+int fputs(const char *_ptr, register FILE *_fp)
+{
+    return Uart_puts((char*) _ptr, strlen((char*) _ptr));
+}
+#endif
+

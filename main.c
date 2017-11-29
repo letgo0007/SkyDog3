@@ -1,34 +1,22 @@
 #include "driverlib.h"
 #include "hal.h"
-#include "app_bist.h"
 #include "bsp_console.h"
 
-int main(void) {
+int _system_pre_init(void)
+{
+    WDTCTL = WDTPW | WDTHOLD;
 
-    //Stop watch dog and check board id.
-    WDT_A_hold(WDT_A_BASE);
+    return 1;
+}
 
-    switch(Hal_Mcu_getBoardId())
-    {
-    case 0:
-    {
-        Hal_Mcu_init();
-        App_Bist();
-        break;
-    }
-    default:
-    {
-        Hal_Mcu_init();
-        break;
-    }
-    }
+int main(void)
+{
+    Mcu_init();
+    Bsp_Console_init();
 
-    //Turn on watch dog and enter normal operation.
-    WDT_A_hold(WDT_A_BASE);
-    while(1)
+    while (1)
     {
-        Bsp_Console_Uart();
-
-        _NOP();
+        Hal_Watchdog_feed();
+        Bsp_Console_run();
     }
 }

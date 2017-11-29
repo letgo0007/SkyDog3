@@ -7,26 +7,32 @@
 
 #include "stdio.h"
 #include "hal.h"
-#include "hal_clock.h"
-#include "hal_gpio.h"
-#include "hal_i2c_slave.h"
-#include "hal_spi_master.h"
-#include "hal_spi_slave.h"
-#include "hal_uart.h"
 
-uint16_t Hal_Mcu_getBoardId(void)
+uint16_t Mcu_getBoardId(void)
 {
     return Hal_Gpio_getBoardId();
 }
 
-uint16_t Hal_Mcu_init()
+uint16_t Mcu_reset(void)
 {
-    Hal_Gpio_init(0);
-    Hal_Clock_init();
-    Hal_Uart_init();
+    /*MCU reset using soft POR*/
+    PMMCTL0_H = PMMPW_H;
+    PMMCTL0_L |= PMMSWPOR;
+    return STATUS_SUCCESS;
+}
 
-    printf("\nMCU Initial Success.");
+uint16_t Mcu_init()
+{
+    Hal_Clock_init(MCLK_F);
+    Hal_Gpio_init(Hal_Gpio_getBoardId());
+    Hal_Rtc_init(0);
+    Hal_Watchdog_init();
+
+    Uart_init(HAL_UART_BAUDRATE);
+    //SpiMaster_init(1000000);
+
     __enable_interrupt();
+    printf("\r\nMCU Initial Done [Board ID:%d]", Hal_Gpio_getBoardId());
 
     return STATUS_SUCCESS;
 }
