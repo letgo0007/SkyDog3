@@ -11,6 +11,7 @@
 #include "driverlib.h"
 #include "hal_clock.h"
 #include "hal_gpio.h"
+#include "hal_i2c_master.h"
 #include "hal_i2c_slave.h"
 #include "hal_spi_master.h"
 #include "hal_spi_slave.h"

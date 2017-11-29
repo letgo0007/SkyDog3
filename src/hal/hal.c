@@ -29,7 +29,10 @@ uint16_t Mcu_init()
     Hal_Watchdog_init();
 
     Uart_init(HAL_UART_BAUDRATE);
-    //SpiMaster_init(1000000);
+    SpiMaster_init(1000000);
+    SpiSlave_init();
+    I2cSlave_init();
+    //I2cMaster_init();
 
     __enable_interrupt();
     printf("\r\nMCU Initial Done [Board ID:%d]", Hal_Gpio_getBoardId());

@@ -39,10 +39,11 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
      * P9.7 LED2/LED_G      GPIO_OUT
      *
      * **UCA0 = SPI Slave**
-     * P4.2 SPI_S_MOSI      UCA0SIMO    1
-     * P4.3 SPI_S_MISO      UCA0SOMI    1
+     *
      * P2.2 SPI_S_CLK       UCA0CLK     1
      * P2.3 SPI_S_CS        UCA0STE     1
+     * P4.2 SPI_S_MOSI      UCA0SIMO    1
+     * P4.3 SPI_S_MISO      UCA0SOMI    1
      *
      * **UCA1 = UART**
      * P3.0 UART_RTS        NC
@@ -71,8 +72,8 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ, GPIO_PIN4 + GPIO_PIN5, GPIO_PRIMARY_MODULE_FUNCTION);
 
     //Keys
-    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN1);
-    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN2);
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P1, GPIO_PIN1);
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P1, GPIO_PIN2);
 
     //LEDs
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);

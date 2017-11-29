@@ -12,6 +12,7 @@
  *****************************************************************************/
 static uint8_t *Spi_M_RxPtr = 0;
 static uint16_t Spi_M_RxLen = 0;
+static uint16_t Spi_M_TxCnt = 0;
 
 void SpiMaster_init(uint32_t Freq)
 {
@@ -24,7 +25,7 @@ void SpiMaster_init(uint32_t Freq)
     param.msbFirst = EUSCI_B_SPI_MSB_FIRST;
     param.clockPhase = EUSCI_B_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
     param.clockPolarity = EUSCI_B_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
-    param.spiMode = EUSCI_B_SPI_4PIN_UCxSTE_ACTIVE_LOW;
+    param.spiMode = EUSCI_B_SPI_3PIN;
     EUSCI_B_SPI_initMaster(EUSCI_B0_BASE, &param);
 
     //Enable SPI module
@@ -52,7 +53,8 @@ void USCI_B0_ISR(void)
     case 2: //Vector 2 - RXIFG
         if (Spi_M_RxLen == 0)
         {
-            EUSCI_B_SPI_disableInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);    //Disable RX Interrupt when finish.
+            _NOP();
+            //EUSCI_B_SPI_disableInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);    //Disable RX Interrupt when finish.
         }
         else
         {
@@ -75,10 +77,13 @@ void SpiMaster_putc(uint8_t c)
 
     //Transmit Data to slave
     EUSCI_B_SPI_transmitData(EUSCI_B0_BASE, c);
+    Spi_M_TxCnt++;
 }
 
 void SpiMaster_puts(uint8_t *s, uint16_t len)
 {
+    Spi_M_TxCnt = 0;
+
     //Transfer multiple byte.
     while (len--)
     {
@@ -103,8 +108,18 @@ void SpiMaster_gets(uint8_t *s, uint16_t len)
     Spi_M_RxPtr = s;
     Spi_M_RxLen = len;
     //Clear & Enable USCI_B0 RX interrupt
-    EUSCI_B_SPI_clearInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);
-    EUSCI_B_SPI_enableInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);
+    //EUSCI_B_SPI_clearInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);
+    //EUSCI_B_SPI_enableInterrupt(EUSCI_B0_BASE, EUSCI_B_SPI_RECEIVE_INTERRUPT);
+}
+
+uint16_t SpiMaster_getTxCnt(uint16_t total)
+{
+    return Spi_M_TxCnt; //Not available
+}
+
+uint16_t SpiMaster_getRxCnt(uint16_t total)
+{
+    return (total - Spi_M_RxLen);
 }
 
 uint16_t SpiMaster_initCsPins()
