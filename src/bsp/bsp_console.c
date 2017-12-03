@@ -122,6 +122,7 @@ uint16_t Bsp_Console_init()
     Bsp_Console_insert("help", &Console_help, "\tPrint help hints");
     Bsp_Console_insert("time", &Console_printTimeStamp, "\tPrint time stamp");
     Bsp_Console_insert("reset", &Mcu_reset, "\tReset MCU");
+    Bsp_Console_insert("bsl", &Mcu_enterBsl, "\tEnter TI BSL");
 
     printf("\r\nConsole Initial Done [Ver:%s][Time:%d ms].\r\n>", BSP_CONSOLE_VERSION,Hal_Rtc_getTimeStamp());
     Uart_gets(console_str, 16);

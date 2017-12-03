@@ -63,8 +63,8 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
      * P8.7 SPI_M_CS3       GPIO_OUT
      *
      * **UCB1 = I2C Slave**
-     * P4.0 I2C_S_SDA       UCB1SDA     1
-     * P4.1 I2C_S_SCL       UCB1SCL     1
+     * P4.0 I2C_S_SDA       UCB1SDA     2
+     * P4.1 I2C_S_SCL       UCB1SCL     2
      *
      */
 
@@ -103,8 +103,8 @@ uint16_t Hal_Gpio_init(uint8_t board_id)
     GPIO_setAsOutputPin(GPIO_PORT_P8, GPIO_PIN7);
 
     //I2C Slave
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN0, GPIO_PRIMARY_MODULE_FUNCTION);
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN1, GPIO_PRIMARY_MODULE_FUNCTION);
+    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN0, GPIO_SECONDARY_MODULE_FUNCTION);
+    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN1, GPIO_SECONDARY_MODULE_FUNCTION);
 
     /* Disable the GPIO power-on default high-impedance mode to activate
      * previously configured port settings

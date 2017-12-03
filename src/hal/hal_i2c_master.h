@@ -16,6 +16,8 @@ extern uint16_t I2cMaster_write(uint8_t addr, uint8_t *s, uint16_t len);
 
 extern uint16_t I2cMaster_read(uint8_t addr, uint8_t *s, uint16_t len);
 
+extern uint16_t I2cMaster_wwrite(uint8_t addr, uint8_t *TxPtr1, uint16_t TxLen1, uint8_t *TxPtr2, uint16_t TxLen2);
+
 extern uint16_t I2cMaster_wread(uint8_t addr, uint8_t *TxPtr, uint16_t TxLen, uint8_t *RxPtr, uint16_t RxLen);
 
 extern uint16_t I2cMaster_scan(uint8_t addr);

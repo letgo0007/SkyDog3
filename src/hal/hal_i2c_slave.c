@@ -7,16 +7,24 @@
 
 #include "hal_i2c_slave.h"
 
+/*I2C Start/Stop/Tx/Rx Count*/
+static uint16_t I2c_S_StartCnt[2] =
+{ 0 };
+static uint16_t I2c_S_StopCnt[2] =
+{ 0 };
+static uint16_t I2c_S_RxCnt[2] =
+{ 0 };
+static uint16_t I2c_S_TxCnt[2] =
+{ 0 };
+
 /*I2c Slave 0 operation as command line style*/
 #define I2C_S0_ADD      0x10
 
 static uint8_t *I2c_S0_RxPtr = 0;
 static uint16_t I2c_S0_RxLen = 0;
-static uint16_t I2c_S0_RxCnt = 0;
 
 static uint8_t *I2c_S0_TxPtr = 0;
 static uint16_t I2c_S0_TxLen = 0;
-static uint16_t I2c_S0_TxCnt = 0;
 
 /*I2c Slave 1 operation as register map style*/
 
@@ -26,8 +34,6 @@ static uint8_t *I2c_S1_MapPtr = 0;
 static uint16_t I2c_S1_MapSize = 0;
 static uint8_t I2c_S1_AddrByte = 0;
 static uint16_t I2c_S1_Addr = 0;
-static uint16_t I2c_S1_RxCnt = 0;
-static uint16_t I2c_S1_TxCnt = 0;
 
 uint16_t I2cSlave_init()
 {
@@ -39,10 +45,10 @@ uint16_t I2cSlave_init()
     param.slaveOwnAddressEnable = EUSCI_B_I2C_OWN_ADDRESS_ENABLE;
     EUSCI_B_I2C_initSlave(EUSCI_B1_BASE, &param);
 
-    //param.slaveAddress = I2C_S1_ADD;
-   // param.slaveAddressOffset = EUSCI_B_I2C_OWN_ADDRESS_OFFSET1;
-    //param.slaveOwnAddressEnable = EUSCI_B_I2C_OWN_ADDRESS_ENABLE;
-    //EUSCI_B_I2C_initSlave(EUSCI_B1_BASE, &param);
+    param.slaveAddress = I2C_S1_ADD;
+    param.slaveAddressOffset = EUSCI_B_I2C_OWN_ADDRESS_OFFSET1;
+    param.slaveOwnAddressEnable = EUSCI_B_I2C_OWN_ADDRESS_ENABLE;
+    EUSCI_B_I2C_initSlave(EUSCI_B1_BASE, &param);
 
     //Enable I2C Slave
     EUSCI_B_I2C_enable(EUSCI_B1_BASE);
@@ -96,14 +102,31 @@ void USCIB1_ISR(void)
         break;                     // Vector 4: NACKIFG break;
     case 0x06:                     // Vector 6: STTIFG break;
     {
-        I2c_S0_RxCnt = 0;
-        I2c_S0_TxCnt = 0;
-        I2c_S1_RxCnt = 0;
-        I2c_S1_TxCnt = 0;
+        if ((UCB1ADDRX & 0xFF) == (UCB1I2COA0 & 0xFF))  //Address 0
+        {
+            I2c_S_StartCnt[0]++;
+            I2c_S_RxCnt[0] = 0;
+            I2c_S_TxCnt[0] = 0;
+        }
+        if ((UCB1ADDRX & 0xFF) == (UCB1I2COA1 & 0xFF))  //Address 1
+        {
+            I2c_S_StartCnt[1]++;
+        }
+
         break;
     }
     case 0x08:                     // Vector 8: STPIFG break;
     {
+        if ((UCB1ADDRX & 0xFF) == (UCB1I2COA0 & 0xFF))  //Address 0
+        {
+            I2c_S_StopCnt[0]++;
+        }
+        if ((UCB1ADDRX & 0xFF) == (UCB1I2COA1 & 0xFF))  //Address 1
+        {
+            I2c_S_StopCnt[1]++;
+            I2c_S_RxCnt[1] = 0;
+            I2c_S_TxCnt[1] = 0;
+        }
         break;
     }
     case 0x0a:
@@ -116,39 +139,48 @@ void USCIB1_ISR(void)
         break;                     // Vector 18: TXIFG2 break;
     case 0x12:                     // Vector 20: RXIFG1 break;
     {
-        if(I2c_S1_RxCnt < I2c_S1_AddrByte)
+        if (I2c_S_RxCnt[1] == 0)
         {
-            I2c_S1_Addr = I2c_S1_Addr << 8;
-            I2c_S1_Addr = I2c_S1_Addr + UCB1RXBUF;
+            I2c_S1_Addr = 0;    // Reset address on first byte
+        }
+
+        if (I2c_S_RxCnt[1] < I2c_S1_AddrByte)
+        {
+            I2c_S1_Addr = I2c_S1_Addr * 256 + UCB1RXBUF; // Calculate address
         }
         else
         {
-            if(I2c_S1_Addr < I2c_S1_MapSize)
+            if (I2c_S1_Addr >= I2c_S1_MapSize)
             {
-                I2c_S1_MapPtr[I2c_S1_Addr + I2c_S1_RxCnt] = UCB1RXBUF;
+                I2c_S1_Addr = I2c_S1_Addr % I2c_S1_MapSize;
             }
+            I2c_S1_MapPtr[I2c_S1_Addr + I2c_S_RxCnt[1] - I2c_S1_AddrByte] = UCB1RXBUF;
         }
 
-        I2c_S1_RxCnt ++;
+        I2c_S_RxCnt[1]++;
         break;
     }
 
     case 0x14:                     // Vector 22: TXIFG1 break;
     {
-        UCB1TXBUF = I2c_S1_MapPtr[I2c_S1_Addr + I2c_S1_TxCnt];
-        I2c_S1_TxCnt ++;
+        if (I2c_S1_Addr >= I2c_S1_MapSize)
+        {
+            I2c_S1_Addr = I2c_S1_Addr % I2c_S1_MapSize;
+        }
+        UCB1TXBUF = I2c_S1_MapPtr[I2c_S1_Addr + I2c_S_TxCnt[1]];
+        I2c_S_TxCnt[1]++;
         break;
     }
     case 0x16:                     // Vector 24: RXIFG0 break;
     {
         if (I2c_S0_RxLen == 0)
         {
-            ;
+            uint8_t gabage = UCB1RXBUF;
         }
         else
         {
-            I2c_S0_RxPtr[I2c_S0_RxCnt] = UCB1RXBUF;
-            I2c_S0_RxCnt++;
+            I2c_S0_RxPtr[I2c_S_RxCnt[0]] = UCB1RXBUF;
+            I2c_S_RxCnt[0]++;
             I2c_S0_RxLen--;
         }
 
@@ -158,12 +190,12 @@ void USCIB1_ISR(void)
     {
         if (I2c_S0_TxLen == 0)
         {
-            ;
+            UCB1TXBUF = 0xFF;
         }
         else
         {
-            UCB1TXBUF = I2c_S0_TxPtr[I2c_S0_RxCnt];
-            I2c_S0_TxCnt++;
+            UCB1TXBUF = I2c_S0_TxPtr[I2c_S_TxCnt[0]];
+            I2c_S_TxCnt[0]++;
             I2c_S0_TxLen--;
         }
         break;
@@ -183,18 +215,23 @@ void USCIB1_ISR(void)
 
 void I2cSlave_putc(uint8_t c)
 {
+    static uint8_t buf[1] =
+    { 0 };
+    buf[0] = c;
+
+    I2c_S0_TxPtr = buf;
+    I2c_S0_TxLen = 1;
+
     EUSCI_B_I2C_slavePutData(EUSCI_B1_BASE, c);
 }
 
 void I2cSlave_puts(uint8_t *s, uint16_t len)
 {
-    EUSCI_B_I2C_slavePutData(EUSCI_B1_BASE, *s++);
-
-    if(len > 1)
+    if (len > 0)
     {
         I2c_S0_TxPtr = s;
-        I2c_S0_TxLen = len - 1;
-        I2c_S0_TxCnt = 0;
+        I2c_S0_TxLen = len;
+        I2c_S_TxCnt[0] = 0;
     }
 }
 
@@ -207,7 +244,7 @@ void I2cSlave_gets(uint8_t *s, uint16_t len)
 {
     I2c_S0_RxPtr = s;
     I2c_S0_RxLen = len;
-    I2c_S0_RxCnt = 0;
+    I2c_S_RxCnt[0] = 0;
 }
 
 void I2cSlave_setRegMap(uint8_t *MapPtr, uint16_t MapSize, uint8_t AddrByte)
@@ -216,3 +253,34 @@ void I2cSlave_setRegMap(uint8_t *MapPtr, uint16_t MapSize, uint8_t AddrByte)
     I2c_S1_MapSize = MapSize;
     I2c_S1_AddrByte = AddrByte;
 }
+
+uint16_t I2cSlave_getStartCount(eI2cSlaveType slv_sel)
+{
+    return I2c_S_StartCnt[slv_sel];
+}
+
+uint16_t I2cSlave_getStopCount(eI2cSlaveType slv_sel)
+{
+    return I2c_S_StopCnt[slv_sel];
+}
+
+void I2cSlave_clearStartCount(eI2cSlaveType slv_sel)
+{
+    I2c_S_StartCnt[slv_sel] = 0;
+}
+
+void I2cSlave_clearStopCount(eI2cSlaveType slv_sel)
+{
+    I2c_S_StopCnt[slv_sel] = 0;
+}
+
+uint16_t I2cSlave_getTxCount(eI2cSlaveType slv_sel)
+{
+    return I2c_S_TxCnt[slv_sel];
+}
+
+uint16_t I2cSlave_getRxCount(eI2cSlaveType slv_sel)
+{
+    return I2c_S_RxCnt[slv_sel];
+}
+

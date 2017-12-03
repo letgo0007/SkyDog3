@@ -21,6 +21,11 @@ uint16_t Mcu_reset(void)
     return STATUS_SUCCESS;
 }
 
+void Mcu_enterBsl()
+{
+    ((void (*)())0x1000)();
+}
+
 uint16_t Mcu_init()
 {
     Hal_Clock_init(MCLK_F);
@@ -29,13 +34,14 @@ uint16_t Mcu_init()
     Hal_Watchdog_init();
 
     Uart_init(HAL_UART_BAUDRATE);
-    SpiMaster_init(1000000);
+    //SpiMaster_init(1000000);
     SpiSlave_init();
     I2cSlave_init();
-    //I2cMaster_init();
+    I2cMaster_init();
 
     __enable_interrupt();
     printf("\r\nMCU Initial Done [Board ID:%d]", Hal_Gpio_getBoardId());
 
     return STATUS_SUCCESS;
 }
+

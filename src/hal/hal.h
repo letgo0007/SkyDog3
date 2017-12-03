@@ -25,6 +25,6 @@
 uint16_t Mcu_getBoardId(void);
 uint16_t Mcu_init(void);
 uint16_t Mcu_reset(void);
-
+void Mcu_enterBsl(void);
 
 #endif /* SRC_HAL_HAL_H_ */
